@@ -1,11 +1,18 @@
-import React from 'react';
-import './App.css';
-import Login from './components/login/Login';
+import React, { useState } from "react";
+import "./App.css";
+import Router from "./components/router/Router";
+import { MyContext } from "./components/context/Context";
+import { IMessage } from "./components/chat/interface";
 
 function App() {
+  const [auth, setAuth] = useState(true);
+  const [socket, setSocket] = useState<null | WebSocket>(null);
+
   return (
     <div className="App">
-      <Login />
+      <MyContext.Provider value={{ auth: auth, setAuth: setAuth, socket: socket, setSocket: setSocket }}>
+        <Router />
+      </MyContext.Provider>
     </div>
   );
 }
