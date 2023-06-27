@@ -1,10 +1,52 @@
-import React from "react";
-import Box from "@mui/material/Box";
-import { Typography, useTheme, Input, Button } from "@mui/material";
+import React, { useRef, useState, useContext } from "react";
+import { Typography, Box, useTheme, Button, styled } from "@mui/material";
 import space from "../../assets/space.jpg";
+import { MyContext, IContext } from "../context/Context";
+import { auth } from "../../firebase/firebase";
+import { signInWithPopup } from "firebase/auth";
+
+const Input = styled("input")({
+  height: "50%",
+  backgroundColor: "#373743",
+  padding: "0 15px",
+  fontSize: "24px",
+  color: "#fbfbff",
+  borderRadius: "16px",
+  outline: "none",
+  border: "none",
+});
 
 const Login = () => {
   const theme = useTheme();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { auth, setAuth } = useContext(MyContext) as IContext;
+
+  const logIn = () => {
+    signInWithPopup(auth, provider)
+      .then((result) => {
+        // This gives you a Google Access Token. You can use it to access the Google API.
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const token = credential.accessToken;
+        // The signed-in user info.
+        const user = result.user;
+        // IdP data available using getAdditionalUserInfo(result)
+        // ...
+      })
+      .catch((error) => {
+        // Handle Errors here.
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        // The email of the user's account used.
+        const email = error.customData.email;
+        // The AuthCredential type that was used.
+        const credential = GoogleAuthProvider.credentialFromError(error);
+        // ...
+      });
+    const input = inputRef.current;
+    localStorage.setItem("auth", `${auth}`);
+    localStorage.setItem("username", `${input!.value}`);
+    setAuth((prev) => !prev);
+  };
 
   return (
     <Box
@@ -70,15 +112,7 @@ const Login = () => {
               "& div, button": { borderRadius: "16px", border: "none" },
             }}
           >
-            <Input
-              placeholder="Username"
-              sx={{
-                height: "50%",
-                backgroundColor: theme.palette.secondaryCustomColor.loginInput,
-                "& .MuiInputBase-input": { padding: "0 15px", fontSize: "24px", color: theme.palette.customColor.text },
-                "&::after": { content: "none" },
-              }}
-            />
+            {/* <Input placeholder="Username" ref={inputRef} /> */}
             <Button
               sx={{
                 height: "50%",
@@ -89,9 +123,13 @@ const Login = () => {
                   backgroundColor: "#f14619",
                   boxShadow: "inset 0px 0px 10px 1px rgba(0,0,0,0.6);",
                 },
+                "&": {
+                  fontSize: "18px",
+                },
               }}
+              onClick={() => logIn()}
             >
-              Enter
+              Sign in with Google
             </Button>
           </Box>
         </Box>
