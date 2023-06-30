@@ -5,12 +5,12 @@ import { MyContext } from "./components/context/Context";
 import { IMessage } from "./components/chat/interface";
 
 function App() {
-  const [auth, setAuth] = useState(true);
+  //const [auth, setAuth] = useState(true);
   const [socket, setSocket] = useState<null | WebSocket>(null);
 
   return (
     <div className="App">
-      <MyContext.Provider value={{ auth: auth, setAuth: setAuth, socket: socket, setSocket: setSocket }}>
+      <MyContext.Provider value={{ socket: socket, setSocket: setSocket }}>
         <Router />
       </MyContext.Provider>
     </div>

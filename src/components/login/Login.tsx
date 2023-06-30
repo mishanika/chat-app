@@ -3,7 +3,8 @@ import { Typography, Box, useTheme, Button, styled } from "@mui/material";
 import space from "../../assets/space.jpg";
 import { MyContext, IContext } from "../context/Context";
 import { auth } from "../../firebase/firebase";
-import { signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { addUser } from "../../firebase/database";
 
 const Input = styled("input")({
   height: "50%",
@@ -18,34 +19,32 @@ const Input = styled("input")({
 
 const Login = () => {
   const theme = useTheme();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { auth, setAuth } = useContext(MyContext) as IContext;
+  const { socket, setSocket } = useContext(MyContext) as IContext;
+
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({
+    login_hint: "user@example.com",
+  });
 
   const logIn = () => {
+    console.log(auth);
     signInWithPopup(auth, provider)
       .then((result) => {
         // This gives you a Google Access Token. You can use it to access the Google API.
         const credential = GoogleAuthProvider.credentialFromResult(result);
-        const token = credential.accessToken;
+        const token = credential!.accessToken;
         // The signed-in user info.
         const user = result.user;
-        // IdP data available using getAdditionalUserInfo(result)
-        // ...
+        addUser(user.displayName as string, user.email as string, user.photoURL as string);
+
+        console.log(user);
       })
       .catch((error) => {
-        // Handle Errors here.
         const errorCode = error.code;
         const errorMessage = error.message;
-        // The email of the user's account used.
         const email = error.customData.email;
-        // The AuthCredential type that was used.
         const credential = GoogleAuthProvider.credentialFromError(error);
-        // ...
       });
-    const input = inputRef.current;
-    localStorage.setItem("auth", `${auth}`);
-    localStorage.setItem("username", `${input!.value}`);
-    setAuth((prev) => !prev);
   };
 
   return (
@@ -125,6 +124,7 @@ const Login = () => {
                 },
                 "&": {
                   fontSize: "18px",
+                  fontWeight: "600",
                 },
               }}
               onClick={() => logIn()}

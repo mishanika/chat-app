@@ -4,13 +4,12 @@ import SendSVG from "../svg/SendSVG";
 import { MyContext, IContext } from "../context/Context";
 import { TextArea, MyMessage, Message, GreetingMessage, Username } from "./styledElements/StyledElements";
 import { IMessage } from "./interface";
-import { error } from "console";
+import { auth } from "../../firebase/firebase";
 
 const Chat = () => {
   const theme = useTheme();
   const [messages, setMessages] = useState<IMessage[]>([]);
   const { socket, setSocket } = useContext(MyContext) as IContext;
-  //const socket = new WebSocket("ws://localhost:3030");
   const chatRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
 
@@ -173,6 +172,7 @@ const Chat = () => {
           </Box>
         </Box>
       </Box>
+      <Box onClick={() => auth.signOut()}>sign out</Box>
     </Box>
   );
 };
