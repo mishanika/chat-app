@@ -37,6 +37,7 @@ socket.on("connection", (userSocket) => {
     console.log("Connected ", users.length);
     console.log("Received message:", { username, text, type, uuid });
   });
+
   userSocket.on("close", (userArg) => {
     console.log("________");
     const deleteId = users.findIndex((user) => user.uuid === id);
