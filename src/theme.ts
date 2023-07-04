@@ -10,7 +10,7 @@ declare module "@mui/material/styles" {
       main: string;
       loginBtn: string;
       loginBg: string;
-      loginInput: string;
+      secondary: string;
     };
   }
   interface PaletteOptions {
@@ -22,7 +22,7 @@ declare module "@mui/material/styles" {
       main: string;
       loginBtn: string;
       loginBg: string;
-      loginInput: string;
+      secondary: string;
     };
   }
 }
@@ -37,7 +37,7 @@ export const theme = createTheme({
       main: "#1985ff",
       loginBtn: "#f14619",
       loginBg: "#15161e",
-      loginInput: "#373743",
+      secondary: "#373743",
     },
   },
 });

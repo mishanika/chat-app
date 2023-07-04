@@ -18,8 +18,9 @@ export const TextArea = styled("textarea")({
 
 export const MyMessage = styled("div")({
   width: "200px",
+
   background: "#1985ff",
-  padding: "5px 10px",
+  padding: "15px 20px",
   borderRadius: "16px",
   alignSelf: "flex-end",
 });
@@ -27,7 +28,8 @@ export const MyMessage = styled("div")({
 export const Message = styled("div")({
   width: "200px",
   background: "#3b3d4b",
-  padding: "5px 10px",
+  padding: "15px 20px",
+
   borderRadius: "16px",
 });
 
@@ -38,4 +40,23 @@ export const GreetingMessage = styled("div")({
 
 export const Username = styled("span")({
   fontSize: "16px",
+});
+
+export const Input = styled("input")({
+  width: "100%",
+  height: "60px",
+  backgroundColor: "transparent",
+  padding: "15px 10px",
+  fontSize: "20px",
+  color: "#fbfbff",
+  outline: "none",
+  border: "none",
+  borderBottom: "1px solid black",
+  boxSizing: "border-box",
+});
+
+export const Img = styled("img")({
+  width: "40px",
+  height: "40px",
+  borderRadius: "50%",
 });

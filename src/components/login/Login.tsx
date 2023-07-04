@@ -6,25 +6,11 @@ import { auth } from "../../firebase/firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { addUser } from "../../firebase/database";
 
-const Input = styled("input")({
-  height: "50%",
-  backgroundColor: "#373743",
-  padding: "0 15px",
-  fontSize: "24px",
-  color: "#fbfbff",
-  borderRadius: "16px",
-  outline: "none",
-  border: "none",
-});
-
 const Login = () => {
   const theme = useTheme();
   const { socket, setSocket } = useContext(MyContext) as IContext;
 
   const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({
-    login_hint: "user@example.com",
-  });
 
   const logIn = () => {
     console.log(auth);
