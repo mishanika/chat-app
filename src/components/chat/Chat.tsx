@@ -13,6 +13,7 @@ const Chat = () => {
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [users, setUsers] = useState<IUser[]>([]);
   const [chats, setChats] = useState<IChat[]>([]);
+  const [roomId, setRoomId] = useState<string>("0");
   const { socket, setSocket } = useContext(MyContext) as IContext;
   const chatRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -42,69 +43,74 @@ const Chat = () => {
         });
       console.log("socket done");
     }
+
+    return () => {
+      socket?.close();
+    };
   }, []);
 
   useEffect(() => {
     if (socket) {
-      socket!.onopen = (message) => {
-        socket!.send(
+      socket.onopen = (message) => {
+        socket.send(
           JSON.stringify({
             username: localStorage.getItem("username"),
             uuid: localStorage.getItem("uuid"),
             text: textRef.current!.value,
             type: "greeting",
+            photoURL: localStorage.getItem("photoURL"),
+            roomId: roomId,
           })
         );
       };
 
       socket!.onmessage = (message) => {
         const messageData = JSON.parse(message.data);
-        if (messageData.type === "uuid") {
-          localStorage.setItem("uuid", messageData.uuid);
-          return;
-        }
-        console.log(messageData);
         setMessages((prev) => [...prev, messageData]);
       };
 
       socket!.onclose = () => {
-        localStorage.removeItem("uuid");
-        localStorage.removeItem("auth");
+        return;
       };
     }
   }, [socket]);
 
-  const sendMessage = () => {
+  const sendMessage = (roomId: string) => {
     const message = {
       username: localStorage.getItem("username"),
       uuid: localStorage.getItem("uuid"),
       text: textRef.current!.value,
       type: "message",
+      photoURL: localStorage.getItem("photoURL"),
+      roomId: roomId,
     };
     socket!.send(JSON.stringify(message));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter") {
-      sendMessage();
+      sendMessage(roomId);
     }
   };
 
-  const renderMessage = ({ username, text, type }: IMessage) => {
+  const renderMessage = ({ username, text, type, photoURL }: IMessage) => {
     switch (type) {
       case "greeting":
         return <GreetingMessage>{text}</GreetingMessage>;
       case "myMessage":
         return (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: "5px", alignSelf: "flex-end" }}>
+          <Box sx={{ display: "flex", gap: "5px", alignSelf: "flex-end", margin: "0 10px 0 0" }}>
             <MyMessage>{text}</MyMessage>
           </Box>
         );
       case "message":
         return (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: "5px", alignSelf: "flex-start" }}>
-            <Username>{username}</Username>
-            <Message>{text}</Message>
+          <Box sx={{ display: "flex", gap: "5px", alignSelf: "flex-start" }}>
+            <Img src={photoURL} sx={{ alignSelf: "center" }} />
+            <Box sx={{ display: "flex", flexDirection: "column", gap: "5px", alignSelf: "flex-start" }}>
+              <Username>{username}</Username>
+              <Message>{text}</Message>
+            </Box>
           </Box>
         );
       default:
@@ -118,7 +124,22 @@ const Chat = () => {
     setUsers(users);
   };
 
-  const renderUsers = ({ username, photoURL }: IUser) => (
+  const openChat = async (id: string) => {
+    const dataToPost = {
+      users: [id, localStorage.getItem("uuid")],
+    };
+    const response = await fetch("http://localhost:3333/openChat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json;charset=utf-8",
+      },
+      body: JSON.stringify(dataToPost),
+    });
+    const data = await response.json();
+    setRoomId(data);
+  };
+
+  const renderUsers = ({ username, photoURL, id }: IUser) => (
     <Box
       sx={{
         display: "flex",
@@ -134,6 +155,7 @@ const Chat = () => {
           boxShadow: "0px 0px 15px 5px rgba(0,0,0,0.5)",
         },
       }}
+      onClick={() => openChat(id)}
     >
       <Img src={photoURL}></Img>
       <Typography
@@ -186,25 +208,29 @@ const Chat = () => {
         alignItems: "center",
         justifyContent: "center",
         color: theme.palette.customColor.text,
+        padding: "25px 5%",
+        boxSizing: "border-box",
       }}
       onKeyDown={(e) => handleKeyDown(e)}
     >
       <Box
         sx={{
           flexGrow: "1",
-          maxWidth: "350px",
-          height: "calc(100% - 50px)",
-          border: "1px solid white",
+          maxWidth: "400px",
+          height: "100% ",
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
+          borderBottom: "1px solid" + theme.palette.secondaryCustomColor.secondary,
+          borderTop: "1px solid" + theme.palette.secondaryCustomColor.secondary,
+          borderLeft: "1px solid" + theme.palette.secondaryCustomColor.secondary,
         }}
       >
         <Box>
           <Input ref={searchRef} placeholder="Enter username" onChange={() => searchUser()} />
           <Box>
-            {searchRef.current && searchRef.current.value && Number(searchRef.current!.value) <= 0
+            {searchRef.current && Number(searchRef.current!.value.length) <= 0
               ? chats.map(renderUserChats)
               : users.map(renderUsers)}
           </Box>
@@ -222,9 +248,10 @@ const Chat = () => {
       </Box>
       <Box
         sx={{
-          width: "calc(75% + 25px + 45px)",
-          maxWidth: "1300px",
-          height: "calc(100% - 50px)",
+          //width: "calc(75% + 25px + 45px)",
+          //maxWidth: "1300px",
+          flexGrow: 1,
+          height: "100%",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
@@ -240,10 +267,12 @@ const Chat = () => {
             width: "100%",
             height: "60px",
             padding: "15px 30px",
+            margin: "0 0 15px 0",
             boxSizing: "border-box",
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-start",
+            border: "1px solid white",
           }}
         >
           <Img src={space} />
@@ -258,6 +287,7 @@ const Chat = () => {
             alignItems: "center",
             justifyContent: "flex-end",
             overflowY: "auto",
+            scrollbarGutter: "stable both-edges",
             "&::-webkit-scrollbar": {
               width: "10px",
             },
@@ -312,7 +342,7 @@ const Chat = () => {
               borderRadius: "16px",
             }}
           >
-            <SendSVG cursor="pointer" color="#fff" onClick={() => sendMessage()} />
+            <SendSVG cursor="pointer" color="#fff" onClick={() => sendMessage(roomId)} />
           </Box>
         </Box>
       </Box>

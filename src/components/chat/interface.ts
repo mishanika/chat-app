@@ -3,10 +3,12 @@ export interface IMessage {
   text: string;
   type: string;
   timestamp: Date;
+  photoURL: string;
 }
 export interface IUser {
   username: string;
   photoURL: string;
+  id: string;
 }
 
 export interface IChat {
