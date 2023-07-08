@@ -3,7 +3,8 @@
 # dependencies
 /node_modules
 server/node_modules 
-server/firebase-admin/firebase-credentials.json 
+server/firebase-admin/firebase-credentials.json
+src/firebase/firebase.ts
 /.pnp
 .pnp.js
 
