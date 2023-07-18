@@ -4,6 +4,7 @@ export interface IMessage {
   type: string;
   timestamp: Date;
   photoURL: string;
+  userId: string;
 }
 export interface IUser {
   username: string;

@@ -18,34 +18,60 @@ socket.on("connection", (userSocket) => {
   let id;
 
   userSocket.on("message", async (message) => {
-    const { username, uuid, text, type, photoURL, roomId } = JSON.parse(message);
+    const { username, uuid, text, type, photoURL, roomId, timestamp } = JSON.parse(message);
+    const messagesRef = database.collection("chatrooms").doc(roomId).collection("messages");
     room = rooms[roomId];
     id = uuid;
-    console.log(uuid);
+    console.log(id);
 
     switch (type) {
       case "greeting":
-        const roomsCollection = database.collection("chatrooms");
-
-        const q = roomsCollection.where("roomId", "==", roomId);
-
-        const querySnapshot = await q.get();
-
         room.users.forEach((user) =>
           user.userSocket.send(
-            JSON.stringify({ username: username, text: "New member has appeared", type: "greeting" })
+            JSON.stringify({
+              username: username,
+              text: "New member has appeared",
+              type: "greeting",
+              photoURL: null,
+              timestamp: timestamp,
+              userId: uuid,
+            })
           )
         );
         room.messages.push({ msgType: "greeting", text: "", timestamp: "", userId: uuid });
         room.users.push({ userSocket: userSocket, uuid: uuid });
-
+        messagesRef.doc().set({
+          username: username,
+          text: "New member has appeared",
+          type: "greeting",
+          photoURL: null,
+          timestamp: timestamp,
+          userId: uuid,
+        });
         break;
       case "message":
         room.users.forEach((user) => {
-          const sendType = user.uuid !== uuid ? "message" : "myMessage";
-          room.messages.push({ msgType: "greeting", text: "", timestamp: "", userId: uuid });
+          //const sendType = user.uuid !== uuid ? "message" : "myMessage";
+          room.messages.push({ msgType: "greeting", text: "", timestamp: timestamp, userId: uuid });
 
-          user.userSocket.send(JSON.stringify({ username: username, text: text, type: sendType, photoURL: photoURL }));
+          user.userSocket.send(
+            JSON.stringify({
+              username: username,
+              text: text,
+              type: "message",
+              photoURL: photoURL,
+              timestamp: timestamp,
+              userId: uuid,
+            })
+          );
+        });
+        messagesRef.doc().set({
+          username: username,
+          text: text,
+          type: "message",
+          photoURL: photoURL,
+          timestamp: timestamp,
+          userId: uuid,
         });
         break;
       default:
@@ -58,12 +84,18 @@ socket.on("connection", (userSocket) => {
 
   userSocket.on("close", (userArg) => {
     console.log("________");
-    //Object.keys(rooms).forEach((room) => leave(room));
-    const deleteId = room.users.findIndex((user) => user.uuid === id);
-    console.log(deleteId);
-    room.users.splice(deleteId, 1);
-    console.log("Connected ", room.users);
-    // console.log(users);
+
+    console.log(room);
+    try {
+      const deleteId = room.users.findIndex((user) => user.uuid === id);
+      console.log(deleteId);
+      if (deleteId === -1) {
+        return;
+      }
+      room.users.splice(deleteId, 1);
+    } catch (error) {
+      console.log(error);
+    }
   });
 });
 
@@ -100,6 +132,20 @@ app.post("/openChat", async function (request, response) {
 
     response.json(data[0].roomId);
   }
+});
+
+app.post("/fetchMessages", async function (request, response) {
+  const messagesRef = database.collection("chatrooms").doc(request.body.roomId).collection("messages");
+  console.log(request.body.roomId);
+  let messagesQuery = await messagesRef.orderBy("timestamp", "desc").limit(request.body.limit);
+
+  if (request.body.lastMessageTimestamp) {
+    messagesQuery = messagesQuery.endBefore(request.body.lastMessageTimestamp);
+  }
+
+  const snapshot = await messagesQuery.get();
+  const messages = snapshot.docs.map((doc) => doc.data());
+  response.json(messages.reverse());
 });
 
 app.listen(process.env.PORT_SERVER, (err) => {
