@@ -35,6 +35,7 @@ const Chat = () => {
       })
         .then((socket) => {
           setSocket(socket as WebSocket);
+          fetchMessages(roomId);
           isPending = false; // Reset the fetch status
         })
         .catch((error) => {
@@ -60,6 +61,7 @@ const Chat = () => {
             type: "greeting",
             photoURL: localStorage.getItem("photoURL"),
             roomId: roomId,
+            timestamp: Date.now(),
           })
         );
       };
@@ -83,6 +85,7 @@ const Chat = () => {
       type: "message",
       photoURL: localStorage.getItem("photoURL"),
       roomId: roomId,
+      timestamp: Date.now(),
     };
     socket!.send(JSON.stringify(message));
   };
@@ -93,29 +96,49 @@ const Chat = () => {
     }
   };
 
-  const renderMessage = ({ username, text, type, photoURL }: IMessage) => {
-    switch (type) {
-      case "greeting":
-        return <GreetingMessage>{text}</GreetingMessage>;
-      case "myMessage":
-        return (
-          <Box sx={{ display: "flex", gap: "5px", alignSelf: "flex-end", margin: "0 10px 0 0" }}>
-            <MyMessage>{text}</MyMessage>
+  const renderMessage = ({ username, text, type, photoURL, userId }: IMessage) => {
+    const id = localStorage.getItem("uuid");
+    if (type === "greeting") {
+      return <GreetingMessage>{text}</GreetingMessage>;
+    } else if (userId === id) {
+      return (
+        <Box sx={{ display: "flex", gap: "5px", alignSelf: "flex-end", margin: "0 10px 0 0" }}>
+          <MyMessage>{text}</MyMessage>
+        </Box>
+      );
+    } else {
+      return (
+        <Box sx={{ display: "flex", gap: "5px", alignSelf: "flex-start" }}>
+          <Img src={photoURL} sx={{ alignSelf: "center" }} />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "5px", alignSelf: "flex-start" }}>
+            <Username>{username}</Username>
+            <Message>{text}</Message>
           </Box>
-        );
-      case "message":
-        return (
-          <Box sx={{ display: "flex", gap: "5px", alignSelf: "flex-start" }}>
-            <Img src={photoURL} sx={{ alignSelf: "center" }} />
-            <Box sx={{ display: "flex", flexDirection: "column", gap: "5px", alignSelf: "flex-start" }}>
-              <Username>{username}</Username>
-              <Message>{text}</Message>
-            </Box>
-          </Box>
-        );
-      default:
-        return null;
+        </Box>
+      );
     }
+    // switch (type) {
+    //   case "greeting":
+    //     return <GreetingMessage>{text}</GreetingMessage>;
+    //   case "myMessage":
+    //     return (
+    //       <Box sx={{ display: "flex", gap: "5px", alignSelf: "flex-end", margin: "0 10px 0 0" }}>
+    //         <MyMessage>{text}</MyMessage>
+    //       </Box>
+    //     );
+    //   case "message":
+    //     return (
+    //       <Box sx={{ display: "flex", gap: "5px", alignSelf: "flex-start" }}>
+    //         <Img src={photoURL} sx={{ alignSelf: "center" }} />
+    //         <Box sx={{ display: "flex", flexDirection: "column", gap: "5px", alignSelf: "flex-start" }}>
+    //           <Username>{username}</Username>
+    //           <Message>{text}</Message>
+    //         </Box>
+    //       </Box>
+    //     );
+    //   default:
+    //     return null;
+    // }
   };
 
   const searchUser = async () => {
@@ -137,6 +160,24 @@ const Chat = () => {
     });
     const data = await response.json();
     setRoomId(data);
+    fetchMessages(data);
+  };
+
+  const fetchMessages = async (roomId: string) => {
+    const dataToPost = {
+      roomId: roomId,
+      limit: 40,
+      lastMessageTimestamp: messages.length ? messages[0].timestamp : null,
+    };
+    const response = await fetch("http://localhost:3333/fetchMessages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json;charset=utf-8",
+      },
+      body: JSON.stringify(dataToPost),
+    });
+    const data = await response.json();
+    setMessages(data);
   };
 
   const renderUsers = ({ username, photoURL, id }: IUser) => (
