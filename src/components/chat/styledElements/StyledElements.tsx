@@ -34,7 +34,7 @@ export const Message = styled("div")({
 });
 
 export const GreetingMessage = styled("div")({
-  width: "200px",
+  width: "fit-content",
   background: "transparent",
 });
 

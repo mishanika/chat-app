@@ -13,16 +13,19 @@ export const addUser = async (username: string, email: string, photoURL: string)
   const querySnapshot = await getDocs(q);
 
   if (querySnapshot.size === 0) {
-    await addDoc(userCollection, {
+    await setDoc(doc(database, "users", id), {
       id: id,
       username: username,
       email: email,
       photoURL: photoURL,
-      rooms: [],
+      rooms: ["0"],
     });
+    localStorage.setItem("uuid", id);
+    localStorage.setItem("photoURL", photoURL);
+  } else {
+    localStorage.setItem("uuid", querySnapshot.docs[0].data().id);
+    localStorage.setItem("photoURL", querySnapshot.docs[0].data().photoURL);
   }
-  localStorage.setItem("uuid", id);
-  localStorage.setItem("photoURL", photoURL);
 };
 
 export const addMessage = async (userId: string, message: string, photoURL: string, chatId: string) => {};
