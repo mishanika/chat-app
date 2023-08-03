@@ -19,10 +19,10 @@ socket.on("connection", (userSocket) => {
   userSocket.on("message", async (message) => {
     const { username, uuid, text, type, photoURL, roomId, timestamp } = JSON.parse(message);
     const messagesRef = database.collection("chatrooms").doc(roomId).collection("messages");
-    // const usersRef = database.collection("chatrooms").doc(roomId).collection("users");
-    // const usersSnapshot = await usersRef.where("uuid", "==", uuid).get();
+    const usersRef = database.collection("chatrooms").doc(roomId);
+    const usersSnapshot = (await usersRef.get()).data();
 
-    console.log("OwnProperty", rooms.hasOwnProperty(rooms[roomId]));
+    //console.log("OwnProperty", rooms.hasOwnProperty(rooms[roomId]));
     if (!rooms.hasOwnProperty(roomId)) {
       rooms[roomId] = {
         roomId: roomId,
@@ -33,44 +33,48 @@ socket.on("connection", (userSocket) => {
 
     room = rooms[roomId];
     id = uuid;
-    console.log("UserId", id);
-    console.log("Room", room);
+    // console.log("UserId", id);
+    // console.log("Room", room);
+    //console.log("usersSnapshot", usersSnapshot);
 
     switch (type) {
       case "greeting":
-        //if (!usersSnapshot.docs.length) {
-        room.users.forEach((user) =>
-          user.userSocket.send(
-            JSON.stringify({
-              username: username,
-              text: "New member has appeared",
-              type: "greeting",
-              photoURL: null,
-              timestamp: timestamp,
-              userId: uuid,
-            })
-          )
-        );
-        room.messages.push({ msgType: "greeting", text: "", timestamp: "", userId: uuid });
+        if (!usersSnapshot.users.includes(uuid)) {
+          room.users.forEach((user) =>
+            user.userSocket.send(
+              JSON.stringify({
+                username: username,
+                text: "New member has appeared",
+                type: "greeting",
+                photoURL: null,
+                timestamp: timestamp,
+                userId: uuid,
+              })
+            )
+          );
+          room.messages.push({ msgType: "greeting", text: "", timestamp: "", userId: uuid });
 
-        //usersRef.doc(uuid).set({ uuid: uuid });
+          //usersRef.doc(uuid).set({ uuid: uuid });
 
-        messagesRef.doc().set({
-          username: username,
-          text: "New member has appeared",
-          type: "greeting",
-          photoURL: null,
-          timestamp: timestamp,
-          userId: uuid,
-        });
-        //}
+          messagesRef.doc().set({
+            username: username,
+            text: "New member has appeared",
+            type: "greeting",
+            photoURL: null,
+            timestamp: timestamp,
+            userId: uuid,
+          });
+        }
         room.users.push({ userSocket: userSocket, uuid: uuid });
-        console.log("Connected after greeting", room.users.length);
+        // console.log("Connected after greeting", room.users.length);
 
         break;
+      case "reconnection":
+        room.users.push({ userSocket: userSocket, uuid: uuid });
+        break;
       case "message":
-        console.log("Connected in message", room.users.length);
-        console.log("Room in message", room);
+        // console.log("Connected in message", room.users.length);
+        // console.log("Room in message", room);
 
         room.users.forEach((user) => {
           //const sendType = user.uuid !== uuid ? "message" : "myMessage";
@@ -107,7 +111,7 @@ socket.on("connection", (userSocket) => {
   userSocket.on("close", (userArg) => {
     console.log("________");
 
-    console.log("RoomId", rooms["0"].chatId);
+    console.log("RoomId", room.roomId);
     try {
       const deleteId = room.users.findIndex((user) => user.uuid === id);
       console.log("deleteId", deleteId);
@@ -180,9 +184,9 @@ app.post("/fetchMessages", async function (request, response) {
   console.log(request.body.roomId);
   let messagesQuery = await messagesRef.orderBy("timestamp", "desc").limit(request.body.limit);
 
-  if (request.body.lastMessageTimestamp) {
-    messagesQuery = messagesQuery.endBefore(request.body.lastMessageTimestamp);
-  }
+  // if (request.body.lastMessageTimestamp) {
+  //   messagesQuery = messagesQuery.endBefore(request.body.lastMessageTimestamp);
+  // }
 
   const snapshot = await messagesQuery.get();
   const messages = snapshot.docs.map((doc) => doc.data());

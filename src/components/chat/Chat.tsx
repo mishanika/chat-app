@@ -3,7 +3,7 @@ import { Box, Typography, useTheme } from "@mui/material";
 import SendSVG from "../svg/SendSVG";
 import { MyContext, IContext } from "../context/Context";
 import { TextArea, MyMessage, Message, GreetingMessage, Username, Input, Img } from "./styledElements/StyledElements";
-import { IChat, IMessage, IUser } from "./interface";
+import { IChat, IConnectionStates, IMessage, IUser } from "./interface";
 import { auth } from "../../firebase/firebase";
 import space from "../../assets/space.jpg";
 import { findUser } from "../../firebase/database";
@@ -13,21 +13,32 @@ const Chat = () => {
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [users, setUsers] = useState<IUser[]>([]);
   const [chats, setChats] = useState<IChat[]>([]);
-  const [roomId, setRoomId] = useState<string>("0");
-  const [isPending, setIsPending] = useState<boolean>(false);
+  const [roomIdState, setRoomId] = useState<string>("0");
+  const [connectionStates, setConnectionStates] = useState<IConnectionStates>({
+    isPending: false,
+    reconnection: false,
+  });
   const { socket, setSocket } = useContext(MyContext) as IContext;
   const chatRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!isPending) {
-      setIsPending(true);
+    if (!connectionStates.isPending) {
+      const newState = {
+        ...connectionStates,
+        isPending: true,
+      };
+      setConnectionStates(newState);
     }
   }, []);
 
   useEffect(() => {
-    if (isPending) {
+    if (connectionStates.isPending) {
+      const newState = {
+        ...connectionStates,
+        isPending: false,
+      };
       const promise = new Promise((resolve, reject) => {
         const socket: WebSocket = new WebSocket("ws://localhost:3030");
 
@@ -37,31 +48,50 @@ const Chat = () => {
         .then((socket) => {
           setSocket(socket as WebSocket);
           console.log("socket done");
-          fetchMessages(roomId);
-          setIsPending(false);
+          fetchMessages(roomIdState);
+          setConnectionStates(newState);
         })
         .catch((error) => {
           console.error("Failed to set socket:", error);
-          setIsPending(false);
+          setConnectionStates(newState);
         });
     }
 
     return () => {
       socket?.close();
     };
-  }, [isPending]);
+  }, [connectionStates]);
 
   useEffect(() => {
+    connect(connectionStates.reconnection);
+    console.log("We are in socket events useEffect");
+    //console.log(socket.readyState);
+  }, [socket]);
+
+  useEffect(() => {
+    const dataToPost = {
+      id: localStorage.getItem("uuid"),
+    };
+    fetch("http://localhost:3333/fetchChats", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json;charset=utf-8",
+      },
+      body: JSON.stringify(dataToPost),
+    })
+      .then((data) => data.json())
+      .then((data) => setChats(data));
+  }, []);
+
+  const connect = (reconnection: boolean) => {
     if (socket) {
-      console.log("We are in socket events useEffect");
-      console.log(socket.readyState);
       const message = {
         username: localStorage.getItem("username"),
         uuid: localStorage.getItem("uuid"),
         text: textRef.current!.value,
-        type: "greeting",
+        type: reconnection ? "reconnection" : "greeting",
         photoURL: localStorage.getItem("photoURL"),
-        roomId: roomId,
+        roomId: roomIdState,
         timestamp: Date.now(),
       };
 
@@ -92,22 +122,7 @@ const Chat = () => {
         console.log("Was clean", e.wasClean);
       };
     }
-  }, [socket]);
-
-  useEffect(() => {
-    const dataToPost = {
-      id: localStorage.getItem("uuid"),
-    };
-    fetch("http://localhost:3333/fetchChats", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json;charset=utf-8",
-      },
-      body: JSON.stringify(dataToPost),
-    })
-      .then((data) => data.json())
-      .then((data) => setChats(data));
-  }, []);
+  };
 
   const sendMessage = (roomId: string) => {
     const message = {
@@ -124,7 +139,7 @@ const Chat = () => {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter") {
-      sendMessage(roomId);
+      sendMessage(roomIdState);
     }
   };
 
@@ -158,8 +173,12 @@ const Chat = () => {
   };
 
   const reconnecting = () => {
+    const newState = {
+      isPending: true,
+      reconnection: true,
+    };
     socket!.close();
-    setIsPending(true);
+    setConnectionStates(newState);
   };
 
   const openNewChat = async (id: string) => {
@@ -243,6 +262,8 @@ const Chat = () => {
         background: theme.palette.secondaryCustomColor.secondary,
         cursor: "pointer",
         transition: "0.1s all ease",
+        boxShadow: roomIdState === roomId ? "inset 0px 0px 15px 5px rgba(0,0,0,0.5)" : "none",
+
         "&:hover": {
           boxShadow: "inset 0px 0px 15px 5px rgba(0,0,0,0.5)",
         },
@@ -302,9 +323,9 @@ const Chat = () => {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          borderBottom: "1px solid" + theme.palette.secondaryCustomColor.secondary,
-          borderTop: "1px solid" + theme.palette.secondaryCustomColor.secondary,
-          borderLeft: "1px solid" + theme.palette.secondaryCustomColor.secondary,
+          // borderBottom: "1px solid" + theme.palette.secondaryCustomColor.secondary,
+          // borderTop: "1px solid" + theme.palette.secondaryCustomColor.secondary,
+          // borderLeft: "1px solid" + theme.palette.secondaryCustomColor.secondary,
         }}
       >
         <Box>
@@ -354,7 +375,7 @@ const Chat = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-start",
-            border: "1px solid white",
+            //border: "1px solid white",
           }}
         >
           <Img src={space} />
@@ -424,7 +445,7 @@ const Chat = () => {
               borderRadius: "16px",
             }}
           >
-            <SendSVG cursor="pointer" color="#fff" onClick={() => sendMessage(roomId)} />
+            <SendSVG cursor="pointer" color="#fff" onClick={() => sendMessage(roomIdState)} />
           </Box>
         </Box>
       </Box>

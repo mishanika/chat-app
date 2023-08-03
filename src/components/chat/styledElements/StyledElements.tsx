@@ -51,7 +51,7 @@ export const Input = styled("input")({
   color: "#fbfbff",
   outline: "none",
   border: "none",
-  borderBottom: "1px solid black",
+  //borderBottom: "1px solid black",
   boxSizing: "border-box",
 });
 

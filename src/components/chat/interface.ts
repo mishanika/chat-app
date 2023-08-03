@@ -17,3 +17,8 @@ export interface IChat {
   roomId: string;
   photoURL: string;
 }
+
+export interface IConnectionStates {
+  isPending: boolean;
+  reconnection: boolean;
+}
