@@ -14,56 +14,72 @@ const Chat = () => {
   const [users, setUsers] = useState<IUser[]>([]);
   const [chats, setChats] = useState<IChat[]>([]);
   const [roomId, setRoomId] = useState<string>("0");
+  const [isPending, setIsPending] = useState<boolean>(false);
   const { socket, setSocket } = useContext(MyContext) as IContext;
   const chatRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  let isPending = false;
   useEffect(() => {
-    if (isPending) {
-      return;
+    if (!isPending) {
+      setIsPending(true);
     }
+  }, []);
 
-    isPending = true;
-
+  useEffect(() => {
     if (isPending) {
       const promise = new Promise((resolve, reject) => {
         const socket: WebSocket = new WebSocket("ws://localhost:3030");
 
         resolve(socket);
+        reject("sowwy, smth happened :(");
       })
         .then((socket) => {
           setSocket(socket as WebSocket);
+          console.log("socket done");
           fetchMessages(roomId);
-          isPending = false; // Reset the fetch status
+          setIsPending(false);
         })
         .catch((error) => {
           console.error("Failed to set socket:", error);
-          isPending = false; // Reset the fetch status
+          setIsPending(false);
         });
-      console.log("socket done");
     }
 
     return () => {
       socket?.close();
     };
-  }, []);
+  }, [isPending]);
 
   useEffect(() => {
     if (socket) {
-      socket.onopen = (message) => {
+      console.log("We are in socket events useEffect");
+      console.log(socket.readyState);
+      const message = {
+        username: localStorage.getItem("username"),
+        uuid: localStorage.getItem("uuid"),
+        text: textRef.current!.value,
+        type: "greeting",
+        photoURL: localStorage.getItem("photoURL"),
+        roomId: roomId,
+        timestamp: Date.now(),
+      };
+
+      if (socket.readyState === 1) {
         socket.send(
           JSON.stringify({
-            username: localStorage.getItem("username"),
-            uuid: localStorage.getItem("uuid"),
-            text: textRef.current!.value,
-            type: "greeting",
-            photoURL: localStorage.getItem("photoURL"),
-            roomId: roomId,
-            timestamp: Date.now(),
+            ...message,
           })
         );
+        console.log("MESSAGE HAS BEEN SENT");
+      }
+      socket.onopen = () => {
+        socket.send(
+          JSON.stringify({
+            ...message,
+          })
+        );
+        console.log("MESSAGE HAS BEEN SENT");
       };
 
       socket!.onmessage = (message) => {
@@ -71,11 +87,27 @@ const Chat = () => {
         setMessages((prev) => [...prev, messageData]);
       };
 
-      socket!.onclose = () => {
-        return;
+      socket!.onclose = (e) => {
+        console.log("Code", e.code);
+        console.log("Was clean", e.wasClean);
       };
     }
   }, [socket]);
+
+  useEffect(() => {
+    const dataToPost = {
+      id: localStorage.getItem("uuid"),
+    };
+    fetch("http://localhost:3333/fetchChats", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json;charset=utf-8",
+      },
+      body: JSON.stringify(dataToPost),
+    })
+      .then((data) => data.json())
+      .then((data) => setChats(data));
+  }, []);
 
   const sendMessage = (roomId: string) => {
     const message = {
@@ -117,28 +149,6 @@ const Chat = () => {
         </Box>
       );
     }
-    // switch (type) {
-    //   case "greeting":
-    //     return <GreetingMessage>{text}</GreetingMessage>;
-    //   case "myMessage":
-    //     return (
-    //       <Box sx={{ display: "flex", gap: "5px", alignSelf: "flex-end", margin: "0 10px 0 0" }}>
-    //         <MyMessage>{text}</MyMessage>
-    //       </Box>
-    //     );
-    //   case "message":
-    //     return (
-    //       <Box sx={{ display: "flex", gap: "5px", alignSelf: "flex-start" }}>
-    //         <Img src={photoURL} sx={{ alignSelf: "center" }} />
-    //         <Box sx={{ display: "flex", flexDirection: "column", gap: "5px", alignSelf: "flex-start" }}>
-    //           <Username>{username}</Username>
-    //           <Message>{text}</Message>
-    //         </Box>
-    //       </Box>
-    //     );
-    //   default:
-    //     return null;
-    // }
   };
 
   const searchUser = async () => {
@@ -147,7 +157,12 @@ const Chat = () => {
     setUsers(users);
   };
 
-  const openChat = async (id: string) => {
+  const reconnecting = () => {
+    socket!.close();
+    setIsPending(true);
+  };
+
+  const openNewChat = async (id: string) => {
     const dataToPost = {
       users: [id, localStorage.getItem("uuid")],
     };
@@ -160,7 +175,13 @@ const Chat = () => {
     });
     const data = await response.json();
     setRoomId(data);
+    reconnecting();
     fetchMessages(data);
+  };
+  const openExistingChat = (chatId: string) => {
+    setRoomId(chatId);
+    reconnecting();
+    fetchMessages(chatId);
   };
 
   const fetchMessages = async (roomId: string) => {
@@ -196,7 +217,7 @@ const Chat = () => {
           boxShadow: "0px 0px 15px 5px rgba(0,0,0,0.5)",
         },
       }}
-      onClick={() => openChat(id)}
+      onClick={() => openNewChat(id)}
     >
       <Img src={photoURL}></Img>
       <Typography
@@ -210,7 +231,7 @@ const Chat = () => {
     </Box>
   );
 
-  const renderUserChats = ({ username, photoURL, lastMsg }: IChat) => (
+  const renderUserChats = ({ chatName, photoURL, roomId }: IChat) => (
     <Box
       sx={{
         display: "flex",
@@ -226,16 +247,34 @@ const Chat = () => {
           boxShadow: "inset 0px 0px 15px 5px rgba(0,0,0,0.5)",
         },
       }}
+      onClick={() => openExistingChat(roomId)}
     >
-      <Img src={photoURL}></Img>
-      <Typography
-        sx={{
-          color: theme.palette.customColor.text,
-          fontSize: "20px",
-        }}
-      >
-        {username}
-      </Typography>
+      {photoURL ? (
+        <Img src={photoURL}></Img>
+      ) : (
+        <Box
+          sx={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#fff",
+          }}
+        ></Box>
+      )}
+
+      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+        <Typography
+          sx={{
+            color: theme.palette.customColor.text,
+            fontSize: "20px",
+          }}
+        >
+          {chatName}
+        </Typography>
+      </Box>
     </Box>
   );
 
@@ -278,9 +317,11 @@ const Chat = () => {
         </Box>
         <Box
           sx={{
+            width: "fit-content",
             fontSize: "22px",
             padding: "10px 10px",
             boxSizing: "border-box",
+            cursor: "pointer",
           }}
           onClick={() => auth.signOut()}
         >

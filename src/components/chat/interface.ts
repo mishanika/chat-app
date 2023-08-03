@@ -13,9 +13,7 @@ export interface IUser {
 }
 
 export interface IChat {
-  chatId: string;
-  username: string;
+  chatName: string;
+  roomId: string;
   photoURL: string;
-  lastMsg: string;
-  messages: IMessage[];
 }
